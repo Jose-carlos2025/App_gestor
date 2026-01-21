@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Tarefas - Sistema CRUD</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial; background: #f3f4f6; }
+        .navbar { background: #2563eb; color: white; padding: 15px 20px; display: flex; justify-content: space-between; }
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 20px; }
+        .filters { background: white; padding: 20px; border-radius: 10px; margin: 20px 0; }
+        .filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .tasks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; margin-top: 20px; }
+        .task-card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn { padding: 10px 20px; background: #2563eb; color: white; text-decoration: none; border-radius: 5px; display: inline-block; }
+        .btn-success { background: #10b981; }
+        .btn-danger { background: #ef4444; }
+        .btn-warning { background: #f59e0b; }
+        .btn-sm { padding: 8px 15px; font-size: 0.9rem; }
+        .margin-right { margin-right: 10px; }
+        .margin-top { margin-top: 20px; }
+        .text-center { text-align: center; }
+        .padding-40 { padding: 40px; }
+        .font-3xl { font-size: 3rem; }
+        .color-gray-400 { color: #9ca3af; }
+        .color-gray-600 { color: #6b7280; }
+        .color-gray-700 { color: #4b5563; }
+        .color-gray-900 { color: #1f2937; }
+        .margin-bottom-5 { margin-bottom: 5px; }
+        .margin-bottom-15 { margin-bottom: 15px; }
+        .margin-bottom-20 { margin-bottom: 20px; }
+        .margin-top-15 { margin-top: 15px; }
+        .margin-top-20 { margin-top: 20px; }
+        .margin-15 { margin: 15px 0; }
+        .display-flex { display: flex; }
+        .justify-between { justify-content: space-between; }
+        .align-start { align-items: flex-start; }
+        .align-center { align-items: center; }
+        .padding-15 { padding: 15px; }
+        .padding-10 { padding: 10px; }
+        .border-top { border-top: 1px solid #e5e7eb; }
+        .padding-top-15 { padding-top: 15px; }
+        .bg-white { background: white; }
+        .bg-gray-50 { background: #f9fafb; }
+        .border-radius-5 { border-radius: 5px; }
+        .border-radius-20 { border-radius: 20px; }
+        .font-09rem { font-size: 0.9rem; }
+        .font-075rem { font-size: 0.75rem; }
+        .font-weight-bold { font-weight: bold; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h2>📋 Gestão de Tarefas</h2>
+        <div>
+            <a href="/dashboard" class="btn margin-right">Dashboard</a>
+            <a href="/tasks/new" class="btn btn-success">+ Nova Tarefa</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="filters">
+            <h3>🔍 Filtros</h3>
+            <div class="filter-row">
+                <div>
+                    <label>Status</label>
+                    <select id="filterStatus" onchange="loadTasks()">
+                        <option value="">Todos</option>
+                        <option value="pending">Pendente</option>
+                        <option value="in_progress">Em Andamento</option>
+                        <option value="completed">Concluído</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Categoria</label>
+                    <select id="filterCategory" onchange="loadTasks()">
+                        <option value="">Todas</option>
+                        <!-- Carregado por JavaScript -->
+                    </select>
+                </div>
+                <div>
+                    <label>Prioridade</label>
+                    <select id="filterPriority" onchange="loadTasks()">
+                        <option value="">Todas</option>
+                        <option value="low">Baixa</option>
+                        <option value="medium">Média</option>
+                        <option value="high">Alta</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Buscar</label>
+                    <input type="text" id="filterSearch" placeholder="Título, cliente..." onkeyup="loadTasks()">
+                </div>
+            </div>
+        </div>
+
+        <div id="tasksContainer">
+            <!-- Tarefas carregadas por JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // Verificar login
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) {
+            window.location.href = '/login';
+        }
+
+        // Carregar categorias
+        async function loadCategories() {
+            try {
+                const response = await fetch('/api/categories');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const select = document.getElementById('filterCategory');
+                    data.categories.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.id;
+                        option.textContent = category.name;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar categorias:', error);
+            }
+        }
+
+        // Carregar tarefas
+        async function loadTasks() {
+            const status = document.getElementById('filterStatus').value;
+            const category = document.getElementById('filterCategory').value;
+            const priority = document.getElementById('filterPriority').value;
+            const search = document.getElementById('filterSearch').value;
+            
+            try {
+                let url = '/api/tasks?';
+                const params = [];
+                
+                if (status) params.push(`status=${status}`);
+                if (category) params.push(`category=${category}`);
+                if (priority) params.push(`priority=${priority}`);
+                if (search) params.push(`search=${encodeURIComponent(search)}`);
+                
+                url += params.join('&');
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderTasks(data.tasks);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar tarefas:', error);
+            }
+        }
+
+        function renderTasks(tasks) {
+            const container = document.getElementById('tasksContainer');
+            
+            if (!tasks || tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center padding-40 bg-white border-radius-5">
+                        <div class="font-3xl color-gray-400 margin-bottom-20">📭</div>
+                        <h3 class="color-gray-600">Nenhuma tarefa encontrada</h3>
+                        <p class="color-gray-400">Tente ajustar os filtros ou criar uma nova tarefa.</p>
+                        <a href="/tasks/new" class="btn btn-success margin-top-20">+ Criar Primeira Tarefa</a>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="tasks-grid" id="tasksGrid">
+                    ${tasks.map(task => `
+                        <div class="task-card">
+                            <div class="display-flex justify-between align-start margin-bottom-15">
+                                <div>
+                                    <h3 class="color-gray-900 margin-bottom-5">${task.title}</h3>
+                                    <p class="color-gray-600 font-09rem">
+                                        <strong>👤 Cliente:</strong> ${task.client_name}
+                                        ${task.client_phone ? ` • ${task.client_phone}` : ''}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span class="padding-10 border-radius-20 font-075rem font-weight-bold" style="background: ${task.priority === 'high' ? '#fee2e2' : task.priority === 'medium' ? '#fef3c7' : '#d1fae5'}; color: ${task.priority === 'high' ? '#991b1b' : task.priority === 'medium' ? '#92400e' : '#065f46'};">
+                                        ${task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Média' : 'Baixa'} Prioridade
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="margin-15">
+                                <p class="color-gray-700 font-09rem">
+                                    <strong>📁 Categoria:</strong> ${getCategoryName(task.category)}
+                                </p>
+                                ${task.equipment ? `<p class="color-gray-700 font-09rem"><strong>💻 Equipamento:</strong> ${task.equipment}</p>` : ''}
+                                ${task.due_date ? `<p class="color-gray-700 font-09rem"><strong>📅 Prazo:</strong> ${formatDate(task.due_date)}</p>` : ''}
+                                ${task.budget ? `<p class="color-gray-700 font-09rem"><strong>💰 Orçamento:</strong> R$ ${parseFloat(task.budget).toFixed(2)}</p>` : ''}
+                            </div>
+                            
+                            ${task.description ? `
+                                <div class="margin-15 padding-10 bg-gray-50 border-radius-5 font-09rem">
+                                    ${task.description.substring(0, 100)}${task.description.length > 100 ? '...' : ''}
+                                </div>
+                            ` : ''}
+                            
+                            <div class="display-flex justify-between align-center margin-top-20 padding-top-15 border-top">
+                                <div>
+                                    <span class="padding-10 border-radius-20 font-075rem font-weight-bold" style="background: ${task.status === 'completed' ? '#d1fae5' : task.status === 'in_progress' ? '#dbeafe' : '#fef3c7'}; color: ${task.status === 'completed' ? '#065f46' : task.status === 'in_progress' ? '#1e40af' : '#92400e'};">
+                                        ${task.status === 'completed' ? '✅ Concluído' : task.status === 'in_progress' ? '🔄 Em Andamento' : '⏳ Pendente'}
+                                    </span>
+                                </div>
+                                <div>
+                                    <a href="/tasks/${task.id}" class="btn btn-sm margin-right">👁️ Ver</a>
+                                    <button onclick="deleteTask(${task.id})" class="btn-danger btn-sm" style="border: none; cursor: pointer;">🗑️ Excluir</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function getCategoryName(category) {
+            const categories = {
+                'venda': 'Venda de Equipamentos',
+                'reparo_pc': 'Reparação de PC',
+                'reparo_celular': 'Reparação de Celular',
+                'reparo_impressora': 'Reparação de Impressora',
+                'instalacao_software': 'Instalação de Software',
+                'rede': 'Configuração de Rede',
+                'backup': 'Backup de Dados',
+                'outros': 'Outros Serviços'
+            };
+            return categories[category] || category;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Não definido';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        async function deleteTask(id) {
+            if (!confirm('Tem certeza que deseja excluir esta tarefa?')) return;
+            
+            try {
+                const response = await fetch(`/api/tasks/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Tarefa excluída com sucesso!');
+                    loadTasks();
+                } else {
+                    alert('❌ Erro: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('❌ Erro de conexão com o servidor');
+            }
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCategories();
+            loadTasks();
+        });
+    </script>
+</body>
+</html>

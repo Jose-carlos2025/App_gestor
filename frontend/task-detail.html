@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes da Tarefa - Sistema de Gestão</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <i class="fas fa-laptop-code navbar-icon"></i>
+                <h2>TechSolutions</h2>
+            </div>
+            <div class="navbar-menu">
+                <a href="dashboard.html" class="nav-link">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="tasks.html" class="nav-link">
+                    <i class="fas fa-tasks"></i> Tarefas
+                </a>
+                <span id="userGreeting" class="user-greeting"></span>
+                <button type="button" onclick="logout()" class="btn btn-danger">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="task-header">
+            <a href="tasks.html" class="btn btn-back">
+                <i class="fas fa-arrow-left"></i> Voltar para Tarefas
+            </a>
+            <h1 class="task-title">
+                <i class="fas fa-tasks"></i> Detalhes da Tarefa
+            </h1>
+            <p class="task-subtitle">Visualização completa dos detalhes da tarefa</p>
+        </div>
+
+        <div id="taskDetail" class="task-detail-container">
+            <!-- Carregado por JavaScript -->
+        </div>
+    </main>
+
+    <script src="js/auth.js"></script>
+    <script src="js/task-detail.js"></script>
+</body>
+</html>

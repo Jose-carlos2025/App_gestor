@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Detalhes da Tarefa - TechSolutions</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .loading-card {
+            text-align: center;
+            padding: 40px;
+        }
+        .back-button {
+            margin-bottom: 20px;
+        }
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .task-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        .task-section {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .task-section-description {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 5px;
+            min-height: 150px;
+        }
+        .task-actions {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+        }
+        .user-name {
+            margin-right: 20px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>🏢 TechSolutions</h1>
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link">Dashboard</a>
+            <a href="/tarefas" class="nav-link">Tarefas</a>
+            <span id="userName" class="user-name"></span>
+            <button type="button" onclick="logout()" class="btn btn-danger">Sair</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="/tarefas" class="btn back-button">← Voltar para Tarefas</a>
+
+        <div id="loading" class="card loading-card">
+            Carregando...
+        </div>
+
+        <div id="taskDetails" style="display: none;">
+            <!-- Carregado por JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // Verificar se está logado
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) {
+            window.location.href = '/login';
+        } else {
+            document.getElementById('userName').textContent = user.name;
+        }
+        
+        // Obter ID da tarefa da URL
+        const pathParts = window.location.pathname.split('/');
+        const taskId = pathParts[pathParts.length - 1];
+        
+        if (!taskId || isNaN(taskId)) {
+            window.location.href = '/tarefas';
+            return;
+        }
+        
+        // Carregar detalhes da tarefa
+        async function loadTaskDetails() {
+            try {
+                const response = await fetch(`/api/tasks/${taskId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderTaskDetails(data.task);
+                } else {
+                    window.location.href = '/tarefas';
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                window.location.href = '/tarefas';
+            }
+        }
+        
+        function renderTaskDetails(task) {
+            const loadingDiv = document.getElementById('loading');
+            const detailsDiv = document.getElementById('taskDetails');
+            
+            const statusNames = {
+                'pending': 'Pendente',
+                'in_progress': 'Em Andamento',
+                'completed': 'Concluído'
+            };
+            
+            const priorityNames = {
+                'high': 'Alta',
+                'medium': 'Média',
+                'low': 'Baixa'
+            };
+            
+            const categoryNames = {
+                'venda': 'Venda de Equipamentos',
+                'reparo_pc': 'Reparação de PC',
+                'reparo_celular': 'Reparação de Celular',
+                'reparo_impressora': 'Reparação de Impressora',
+                'instalacao_software': 'Instalação de Software',
+                'rede': 'Configuração de Rede',
+                'backup': 'Backup de Dados',
+                'outros': 'Outros Serviços'
+            };
+            
+            detailsDiv.innerHTML = `
+                <div class="card">
+                    <div class="task-header">
+                        <h1>${task.title}</h1>
+                        <div>
+                            <span class="badge badge-${task.status}">${statusNames[task.status]}</span>
+                            <span class="badge badge-${task.priority}">${priorityNames[task.priority]} Prioridade</span>
+                        </div>
+                    </div>
+                    
+                    <div class="task-grid">
+                        <div>
+                            <h3>📋 Informações da Tarefa</h3>
+                            <div class="task-section">
+                                <p><strong>Categoria:</strong> ${categoryNames[task.category] || task.category}</p>
+                                <p><strong>Criada em:</strong> ${formatDate(task.created_at)}</p>
+                                <p><strong>Prazo:</strong> ${formatDate(task.due_date)}</p>
+                                <p><strong>Orçamento:</strong> R$ ${parseFloat(task.budget || 0).toFixed(2)}</p>
+                            </div>
+                            
+                            <h3 style="margin-top: 30px;">👤 Informações do Cliente</h3>
+                            <div class="task-section">
+                                <p><strong>Nome:</strong> ${task.client_name}</p>
+                                ${task.client_phone ? `<p><strong>Telefone:</strong> ${task.client_phone}</p>` : ''}
+                                ${task.client_email ? `<p><strong>Email:</strong> ${task.client_email}</p>` : ''}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            ${task.equipment ? `
+                            <h3>💻 Equipamento</h3>
+                            <div class="task-section">
+                                <p><strong>Equipamento:</strong> ${task.equipment}</p>
+                                ${task.equipment_model ? `<p><strong>Modelo:</strong> ${task.equipment_model}</p>` : ''}
+                                ${task.required_parts ? `<p><strong>Peças Necessárias:</strong><br>${task.required_parts}</p>` : ''}
+                            </div>
+                            ` : ''}
+                            
+                            <h3 style="margin-top: ${task.equipment ? '30px' : '0'};">📝 Descrição</h3>
+                            <div class="task-section-description">
+                                ${task.description || 'Sem descrição'}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="task-actions">
+                        <a href="/tarefas/nova?edit=${task.id}" class="btn btn-warning">✏️ Editar Tarefa</a>
+                        <button type="button" onclick="deleteTask(${task.id})" class="btn btn-danger">🗑️ Excluir Tarefa</button>
+                    </div>
+                </div>
+            `;
+            
+            loadingDiv.style.display = 'none';
+            detailsDiv.style.display = 'block';
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'Não definido';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pt-BR');
+        }
+        
+        async function deleteTask(id) {
+            if (!confirm('Tem certeza que deseja excluir esta tarefa?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/tasks/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Tarefa excluída com sucesso!');
+                    window.location.href = '/tarefas';
+                } else {
+                    alert('❌ Erro: ' + (data.error || 'Erro ao excluir tarefa'));
+                }
+            } catch (error) {
+                alert('❌ Erro de conexão');
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+        
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', loadTaskDetails);
+    </script>
+</body>
+</html>

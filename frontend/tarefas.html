@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <title>Tarefas - TechSolutions</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <h1>🏢 TechSolutions</h1>
+    <div class="nav-links">
+        <a href="/dashboard" class="nav-link">Dashboard</a>
+        <a href="/tarefas" class="nav-link active">Tarefas</a>
+        <span id="userName" :style="margin-right: 20px;"></span>
+        <button type="button" onclick="logout()" class="btn btn-danger">Sair</button>
+    </div>
+</nav>
+
+<div class="container">
+
+    <p :style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;"></p>
+        <div>
+            <h1>📋 Tarefas</h1>
+            <p>Gerencie todas as tarefas da empresa</p>
+        </div>
+        <a href="/tarefas/nova" class="btn btn-success">+ Nova Tarefa</a>
+
+    <div class="card">
+        <h2>🔍 Filtros</h2>
+        <p :style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;"></p>
+
+            <div>
+                <label>Status</label>
+                <select id="filterStatus" class="form-control" onchange="loadTasks()">
+                    <option value="">Todos</option>
+                    <option value="pending">Pendente</option>
+                    <option value="in_progress">Em Andamento</option>
+                    <option value="completed">Concluído</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Categoria</label>
+                <select id="filterCategory" class="form-control" onchange="loadTasks()">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Prioridade</label>
+                <select id="filterPriority" class="form-control" onchange="loadTasks()">
+                    <option value="">Todas</option>
+                    <option value="high">Alta</option>
+                    <option value="medium">Média</option>
+                    <option value="low">Baixa</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Buscar</label>
+                <input type="text" id="filterSearch" class="form-control" placeholder="Título, cliente..." onkeyup="loadTasks()">
+            </div>
+
+    </div>
+
+    <div id="tasksContainer"></div>
+</div>
+
+<script>
+const user = JSON.parse(localStorage.getItem('user'));
+if (!user) {
+    window.location.href = '/login';
+} else {
+    document.getElementById('userName').textContent = user.name;
+}
+
+async function loadCategories() {
+    try {
+        const response = await fetch('/api/categories');
+        const data = await response.json();
+
+        if (data.success) {
+            const select = document.getElementById('filterCategory');
+            data.categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat.id;
+                opt.textContent = cat.name;
+                select.appendChild(opt);
+            });
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function loadTasks() {
+    try {
+        const params = new URLSearchParams({
+            status: filterStatus.value,
+            category: filterCategory.value,
+            priority: filterPriority.value,
+            search: filterSearch.value
+        });
+
+        const response = await fetch('/api/tasks?' + params.toString());
+        const data = await response.json();
+
+        if (data.success) updateTasks(data.tasks);
+    } catch {
+        tasksContainer.innerHTML = '<p>Erro ao carregar tarefas</p>';
+    }
+}
+
+function updateTasks(tasks) {
+    const container = document.getElementById('tasksContainer');
+
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = `
+            <div class="card">
+                <p style="text-align:center;padding:40px;">📭 Nenhuma tarefa encontrada</p>
+            </div>`;
+        return;
+    }
+
+    let html = '<div class="tasks-grid">';
+
+    tasks.forEach(t => {
+        html += `
+        <div class="task-card ${t.priority}">
+            <h3>${t.title}</h3>
+            <p>👤 ${t.client_name}</p>
+            <p>📁 ${getCategoryName(t.category)}</p>
+            <p>📅 ${formatDate(t.due_date)}</p>
+            <p>💰 R$ ${(t.budget || 0).toFixed(2)}</p>
+            <span class="badge badge-${t.status}">${getStatusName(t.status)}</span>
+
+            <div class="task-actions">
+                <a href="/tarefas/${t.id}" class="btn">Ver</a>
+                <button class="btn btn-warning" onclick="editTask(${t.id})">Editar</button>
+                <button class="btn btn-danger" onclick="deleteTask(${t.id})">Excluir</button>
+            </div>
+        </div>`;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function getCategoryName(c) {
+    const map = {
+        venda: 'Venda',
+        reparo_pc: 'Reparo PC',
+        reparo_celular: 'Reparo Celular',
+        reparo_impressora: 'Reparo Impressora',
+        instalacao_software: 'Instalação',
+        rede: 'Rede',
+        backup: 'Backup',
+        outros: 'Outros'
+    };
+    return map[c] || 'Outros';
+}
+
+function getStatusName(s) {
+    return {
+        pending: 'Pendente',
+        in_progress: 'Em Andamento',
+        completed: 'Concluído'
+    }[s] || s;
+}
+
+function formatDate(d) {
+    return d ? new Date(d).toLocaleDateString('pt-BR') : 'Não definido';
+}
+
+function editTask(id) {
+    window.location.href = `/tarefas/nova?edit=${id}`;
+}
+
+async function deleteTask(id) {
+    if (!confirm('Excluir tarefa?')) return;
+
+    const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+
+    if (data.success) loadTasks();
+    else alert('Erro ao excluir');
+}
+
+function logout() {
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadCategories();
+    loadTasks();
+});
+</script>
+
+</body>
+</html>

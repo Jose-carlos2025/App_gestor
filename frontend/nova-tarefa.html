@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Nova Tarefa - TechSolutions</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <h1>🏢 TechSolutions</h1>
+    <div class="nav-links">
+        <a href="/dashboard" class="nav-link">Dashboard</a>
+        <a href="/tarefas" class="nav-link">Tarefas</a>
+        <span id="userName"></span>
+        <button type="button" onclick="logout()" class="btn btn-danger">Sair</button>
+    </div>
+</nav>
+
+<div class="container">
+    <a href="/tarefas" class="btn">← Voltar</a>
+
+    <div class="card">
+        <h1 id="formTitle">📝 Nova Tarefa</h1>
+        <div id="message"></div>
+
+        <form id="taskForm"><button type="submit">Submit</button>
+            <input id="title" type="text" required class="form-control" placeholder="Título">
+            <select id="category" required class="form-control">
+                <option value="">Categoria</option>
+                <option value="venda">Venda</option>
+                <option value="reparo_pc">Reparo PC</option>
+                <option value="reparo_celular">Reparo Celular</option>
+                <option value="reparo_impressora">Reparo Impressora</option>
+                <option value="instalacao_software">Instalação</option>
+                <option value="rede">Rede</option>
+                <option value="backup">Backup</option>
+                <option value="outros">Outros</option>
+            </select>
+
+            <input id="client_name" type="text" required class="form-control" placeholder="Cliente">
+            <input id="due_date" type="date" required class="form-control">
+            <textarea id="description" required class="form-control" placeholder="Descrição"></textarea>
+
+            <button type="button" class="btn btn-success">Salvar</button>
+        </form>
+    </div>
+</div>
+
+<script>
+const user = JSON.parse(localStorage.getItem('user'));
+if (!user) location.href = '/login';
+else userName.textContent = user.name;
+
+const editId = new URLSearchParams(location.search).get('edit');
+
+if (editId) {
+    formTitle.textContent = '✏️ Editar Tarefa';
+    loadTask(editId);
+}
+
+async function loadTask(id) {
+    const res = await fetch(`/api/tasks/${id}`);
+    const data = await res.json();
+    if (data.success) {
+        Object.keys(data.task).forEach(k => {
+            if (document.getElementById(k)) {
+                document.getElementById(k).value = data.task[k];
+            }
+        });
+    }
+}
+
+taskForm.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const body = {
+        title: title.value,
+        category: category.value,
+        client_name: client_name.value,
+        due_date: due_date.value,
+        description: description.value
+    };
+
+    const res = await fetch(editId ? `/api/tasks/${editId}` : '/api/tasks', {
+        method: editId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+
+    const data = await res.json();
+    if (data.success) location.href = '/tarefas';
+    else alert('Erro ao salvar');
+});
+
+function logout() {
+    localStorage.removeItem('user');
+    location.href = '/login';
+}
+</script>
+
+</body>
+</html>

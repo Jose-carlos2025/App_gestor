@@ -1,0 +1,74 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Sistema TechSolutions</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="logo">🏢</div>
+            <h1>TechSolutions</h1>
+            <p>Sistema de Gestão de Tarefas</p>
+
+            <div id="error" class="error"></div>
+
+            <form id="loginForm">
+                <input type="email" id="email" placeholder="Email" value="admin@empresa.com" required>
+                <input type="password" id="password" placeholder="Senha" value="Admin@123" required>
+                <button type="submit">Entrar no Sistema</button>
+            </form>
+
+            <div class="info">
+                <strong>Credenciais:</strong><br>
+                Email: admin@empresa.com<br>
+                Senha: Admin@123
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+            const button = this.querySelector('button');
+            
+            errorDiv.textContent = '';
+            button.textContent = 'Entrando...';
+            button.disabled = true;
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Salvar usuário
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    // Redirecionar para dashboard
+                    window.location.href = '/dashboard';
+                } else {
+                    errorDiv.textContent = '❌ ' + (data.error || 'Erro no login');
+                    button.textContent = 'Entrar no Sistema';
+                    button.disabled = false;
+                }
+            } catch (err) {
+                errorDiv.textContent = '❌ Erro de conexão com o servidor';
+                button.textContent = 'Entrar no Sistema';
+                button.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - TechSolutions</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .actions-container {
+            margin-top: 20px;
+        }
+        #userName {
+            margin-right: 20px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>🏢 TechSolutions</h1>
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link active">Dashboard</a>
+            <a href="/tarefas" class="nav-link">Tarefas</a>
+            <span id="userName"></span>
+            <button type="button" onclick="logout()" class="btn btn-danger">Sair</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>📊 Dashboard</h1>
+        <p>Visão geral do sistema</p>
+
+        <div class="stats-grid" id="stats">
+            <!-- Carregado por JavaScript -->
+        </div>
+
+        <div class="card">
+            <h2>📋 Tarefas Recentes</h2>
+            <div id="recentTasks">
+                <!-- Carregado por JavaScript -->
+            </div>
+            <div class="actions-container">
+                <a href="/tarefas" class="btn">Ver todas as tarefas</a>
+                <a href="/tarefas/nova" class="btn btn-success">+ Nova Tarefa</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar se está logado
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) {
+            window.location.href = '/login';
+        } else {
+            document.getElementById('userName').textContent = user.name;
+        }
+        
+        // Carregar dashboard
+        async function loadDashboard() {
+            try {
+                // Carregar estatísticas
+                const statsResponse = await fetch('/api/dashboard/stats');
+                const statsData = await statsResponse.json();
+                
+                if (statsData.success) {
+                    updateStats(statsData.stats);
+                }
+                
+                // Carregar tarefas recentes
+                const tasksResponse = await fetch('/api/tasks?limit=5');
+                const tasksData = await tasksResponse.json();
+                
+                if (tasksData.success) {
+                    updateRecentTasks(tasksData.tasks);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+            }
+        }
+        
+        function updateStats(stats) {
+            const statsGrid = document.getElementById('stats');
+            
+            const statCards = [
+                { title: 'Total de Tarefas', value: stats.total || 0, icon: '📋' },
+                { title: 'Pendentes', value: stats.pending || 0, icon: '⏳' },
+                { title: 'Em Andamento', value: stats.in_progress || 0, icon: '🔄' },
+                { title: 'Concluídas', value: stats.completed || 0, icon: '✅' }
+            ];
+            
+            statsGrid.innerHTML = statCards.map(stat => `
+                <div class="stat-card">
+                    <div style="font-size: 2rem;">${stat.icon}</div>
+                    <h3>${stat.title}</h3>
+                    <div class="stat-number">${stat.value}</div>
+                </div>
+            `).join('');
+        }
+        
+        function updateRecentTasks(tasks) {
+            const container = document.getElementById('recentTasks');
+            
+            if (!tasks || tasks.length === 0) {
+                container.innerHTML = '<p>Nenhuma tarefa encontrada.</p>';
+                return;
+            }
+            
+            let html = '<table class="table">';
+            html += `
+                <thead>
+                    <tr>
+                        <th>Título</th>
+                        <th>Cliente</th>
+                        <th>Categoria</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+            
+            tasks.slice(0, 5).forEach(task => {
+                html += `
+                    <tr>
+                        <td>${task.title}</td>
+                        <td>${task.client_name}</td>
+                        <td>${getCategoryName(task.category)}</td>
+                        <td><span class="badge badge-${task.status}">${getStatusName(task.status)}</span></td>
+                        <td>
+                            <a href="/tarefas/${task.id}" class="btn">Ver</a>
+                            <button onclick="deleteTask(${task.id})" class="btn btn-danger">Excluir</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        function getCategoryName(category) {
+            const categories = {
+                'venda': 'Venda',
+                'reparo_pc': 'Reparo PC',
+                'reparo_celular': 'Reparo Celular',
+                'reparo_impressora': 'Reparo Impressora',
+                'instalacao_software': 'Instalação',
+                'rede': 'Rede',
+                'backup': 'Backup',
+                'outros': 'Outros'
+            };
+            return categories[category] || category;
+        }
+        
+        function getStatusName(status) {
+            const statuses = {
+                'pending': 'Pendente',
+                'in_progress': 'Em Andamento',
+                'completed': 'Concluído'
+            };
+            return statuses[status] || status;
+        }
+        
+        async function deleteTask(id) {
+            if (!confirm('Tem certeza que deseja excluir esta tarefa?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/tasks/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Tarefa excluída com sucesso!');
+                    loadDashboard();
+                } else {
+                    alert('❌ Erro: ' + (data.error || 'Erro ao excluir tarefa'));
+                }
+            } catch (error) {
+                alert('❌ Erro de conexão');
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+        
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', loadDashboard);
+    </script>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <title>Nova Tarefa - Sistema CRUD</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial; background: #f3f4f6; }
+        .navbar { background: #2563eb; color: white; padding: 15px 20px; display: flex; justify-content: space-between; }
+        .container { max-width: 800px; margin: 30px auto; padding: 0 20px; }
+        .form-container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #374151; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 5px; font-size: 16px; }
+        textarea { min-height: 100px; resize: vertical; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-secondary { background: #6b7280; color: white; }
+        .btn-submit { width: 100%; padding: 15px; font-size: 18px; }
+        .alert { padding: 15px; border-radius: 5px; margin-bottom: 20px; display: none; }
+        .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h2>📝 ${window.location.search.includes('edit') ? 'Editar' : 'Nova'} Tarefa</h2>
+        <div>
+            <a href="/tasks" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="alert" class="alert"></div>
+
+        <div class="form-container">
+            <form id="taskForm">
+                <div class="form-group">
+                    <label for="title">Título da Tarefa *</label>
+                    <input type="text" id="title" required placeholder="Ex: Reparo de Notebook Dell">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="category">Categoria *</label>
+                        <select id="category" required>
+                            <option value="">Selecione...</option>
+                            <option value="venda">🛒 Venda de Equipamentos</option>
+                            <option value="reparo_pc">💻 Reparação de PC</option>
+                            <option value="reparo_celular">📱 Reparação de Celular</option>
+                            <option value="reparo_impressora">🖨️ Reparação de Impressora</option>
+                            <option value="instalacao_software">📀 Instalação de Software</option>
+                            <option value="rede">🌐 Configuração de Rede</option>
+                            <option value="backup">💾 Backup de Dados</option>
+                            <option value="outros">🔧 Outros Serviços</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="priority">Prioridade *</label>
+                        <select id="priority" required>
+                            <option value="low">Baixa</option>
+                            <option value="medium" selected>Média</option>
+                            <option value="high">Alta</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="client_name">Nome do Cliente *</label>
+                        <input type="text" id="client_name" required placeholder="Ex: João Silva">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="client_phone">Telefone</label>
+                        <input type="tel" id="client_phone" placeholder="(11) 99999-9999">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="client_email">Email</label>
+                    <input type="email" id="client_email" placeholder="cliente@email.com">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="equipment">Equipamento</label>
+                        <input type="text" id="equipment" placeholder="Ex: Notebook Dell, iPhone 13">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="equipment_model">Modelo</label>
+                        <input type="text" id="equipment_model" placeholder="Ex: Inspiron 15 3000">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="budget">Orçamento (R$)</label>
+                        <input type="number" id="budget" step="0.01" min="0" placeholder="0.00">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="due_date">Prazo *</label>
+                        <input type="date" id="due_date" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="required_parts">Peças Necessárias</label>
+                    <textarea id="required_parts" placeholder="Liste as peças necessárias..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Descrição do Problema/Serviço *</label>
+                    <textarea id="description" required placeholder="Descreva detalhadamente o problema ou serviço necessário..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status">
+                        <option value="pending">Pendente</option>
+                        <option value="in_progress">Em Andamento</option>
+                        <option value="completed">Concluído</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-submit">
+                    💾 ${window.location.search.includes('edit') ? 'Atualizar' : 'Salvar'} Tarefa
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar login
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) {
+                window.location.href = '/login';
+                return;
+            }
+            
+            // Obter ID da tarefa da URL (se estiver editando)
+            const urlParams = new URLSearchParams(window.location.search);
+            const taskId = urlParams.get('edit');
+            const isEditing = !!taskId;
+            
+            // Configurar data mínima como amanhã
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('due_date').min = tomorrow.toISOString().split('T')[0];
+            
+            // Configurar data padrão para 7 dias à frente
+            const nextWeek = new Date();
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            document.getElementById('due_date').value = nextWeek.toISOString().split('T')[0];
+            
+            // Se estiver editando, carregar os dados da tarefa
+            if (isEditing) {
+                loadTaskData(taskId);
+            }
+            
+            // Configurar formulário
+            document.getElementById('taskForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const alertDiv = document.getElementById('alert');
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                
+                // Mostrar loading
+                submitBtn.textContent = 'Salvando...';
+                submitBtn.disabled = true;
+                
+                // Coletar dados do formulário
+                const taskData = {
+                    title: document.getElementById('title').value,
+                    category: document.getElementById('category').value,
+                    priority: document.getElementById('priority').value,
+                    client_name: document.getElementById('client_name').value,
+                    client_phone: document.getElementById('client_phone').value,
+                    client_email: document.getElementById('client_email').value,
+                    equipment: document.getElementById('equipment').value,
+                    equipment_model: document.getElementById('equipment_model').value,
+                    required_parts: document.getElementById('required_parts').value,
+                    budget: parseFloat(document.getElementById('budget').value) || 0,
+                    due_date: document.getElementById('due_date').value,
+                    description: document.getElementById('description').value,
+                    status: document.getElementById('status').value
+                };
+                
+                try {
+                    let response;
+                    
+                    if (isEditing) {
+                        // Atualizar tarefa existente
+                        response = await fetch(`/api/tasks/${taskId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(taskData)
+                        });
+                    } else {
+                        // Criar nova tarefa
+                        response = await fetch('/api/tasks', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(taskData)
+                        });
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alertDiv.className = 'alert alert-success';
+                        alertDiv.textContent = `✅ Tarefa ${isEditing ? 'atualizada' : 'criada'} com sucesso! Redirecionando...`;
+                        alertDiv.style.display = 'block';
+                        
+                        // Redirecionar após 2 segundos
+                        setTimeout(() => {
+                            window.location.href = '/tasks';
+                        }, 2000);
+                    } else {
+                        alertDiv.className = 'alert alert-error';
+                        alertDiv.textContent = '❌ Erro: ' + (data.error || `Erro ao ${isEditing ? 'atualizar' : 'criar'} tarefa`);
+                        alertDiv.style.display = 'block';
+                        
+                        submitBtn.textContent = originalText;
+                        submitBtn.disabled = false;
+                    }
+                } catch (error) {
+                    console.error('Erro:', error);
+                    alertDiv.className = 'alert alert-error';
+                    alertDiv.textContent = '❌ Erro de conexão com o servidor';
+                    alertDiv.style.display = 'block';
+                    
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                }
+            });
+        });
+        
+        async function loadTaskData(taskId) {
+            try {
+                const response = await fetch(`/api/tasks/${taskId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const task = data.task;
+                    
+                    // Preencher formulário com os dados da tarefa
+                    document.getElementById('title').value = task.title;
+                    document.getElementById('category').value = task.category;
+                    document.getElementById('priority').value = task.priority;
+                    document.getElementById('client_name').value = task.client_name;
+                    document.getElementById('client_phone').value = task.client_phone || '';
+                    document.getElementById('client_email').value = task.client_email || '';
+                    document.getElementById('equipment').value = task.equipment || '';
+                    document.getElementById('equipment_model').value = task.equipment_model || '';
+                    document.getElementById('required_parts').value = task.required_parts || '';
+                    document.getElementById('budget').value = task.budget || '';
+                    document.getElementById('due_date').value = task.due_date ? task.due_date.split('T')[0] : '';
+                    document.getElementById('description').value = task.description || '';
+                    document.getElementById('status').value = task.status;
+                } else {
+                    alert('Tarefa não encontrada');
+                    window.location.href = '/tasks';
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao carregar dados da tarefa');
+                window.location.href = '/tasks';
+            }
+        }
+    </script>
+</body>
+</html>
