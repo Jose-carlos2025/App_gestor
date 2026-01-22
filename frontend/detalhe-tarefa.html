@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Detalhes da Tarefa - TechSolutions</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .task-detail-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        
+        .task-detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+        
+        .task-detail-title {
+            font-size: 24px;
+            color: #1f2937;
+        }
+        
+        .task-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .detail-card {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #2563eb;
+        }
+        
+        .detail-card h3 {
+            color: #374151;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .detail-card p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-in_progress { background: #dbeafe; color: #1e40af; }
+        .status-completed { background: #d1fae5; color: #065f46; }
+        
+        .priority-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .priority-high { background: #fee2e2; color: #dc2626; }
+        .priority-medium { background: #fef3c7; color: #d97706; }
+        .priority-low { background: #d1fae5; color: #059669; }
+        
+        .actions-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h2>🏢 TechSolutions</h2>
+        <div>
+            <span id="userName"></span>
+            <button type="button" onclick="logout()" class="btn-logout">Sair</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="menu">
+            <a href="/dashboard" class="btn">Dashboard</a>
+            <a href="/tarefas" class="btn">Tarefas</a>
+            <a href="/nova-tarefa" class="btn btn-success">+ Nova Tarefa</a>
+        </div>
+
+        <div id="loading">Carregando detalhes da tarefa...</div>
+
+        <div id="taskDetail" style="display: none;">
+            <!-- Conteúdo será preenchido por JavaScript -->
+        </div>
+
+        <div id="notFound" class="display: none; text-align: center; padding: 50px;">
+            <h3>⚠️ Tarefa não encontrada</h3>
+            <p>A tarefa que você está procurando não existe ou foi removida.</p>
+            <a href="/tarefas" class="btn">Voltar para tarefas</a>
+        </div>
+    </div>
+
+    <script>
+        // Verificar login
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) {
+            window.location.href = '/login';
+        } else {
+            document.getElementById('userName').textContent = user.name;
+        }
+
+        // Obter ID da tarefa da URL
+        const pathParts = window.location.pathname.split('/');
+        const taskId = pathParts[pathParts.length - 1];
+
+        async function loadTaskDetail() {
+            try {
+                const response = await fetch(`/api/tasks/${taskId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const task = data.task;
+                    displayTaskDetail(task);
+                } else {
+                    showNotFound();
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showNotFound();
+            }
+        }
+
+        function displayTaskDetail(task) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('taskDetail').style.display = 'block';
+            
+            const statusText = {
+                'pending': '⏳ Pendente',
+                'in_progress': '🔄 Em Andamento',
+                'completed': '✅ Concluída'
+            };
+            
+            const priorityText = {
+                'high': '🔴 Alta Prioridade',
+                'medium': '🟡 Média Prioridade',
+                'low': '🟢 Baixa Prioridade'
+            };
+            
+            const categoryText = {
+                'venda': 'Venda de Equipamentos',
+                'reparo_pc': 'Reparação de PC',
+                'reparo_celular': 'Reparação de Celular',
+                'reparo_impressora': 'Reparação de Impressora',
+                'instalacao_software': 'Instalação de Software',
+                'rede': 'Configuração de Rede',
+                'backup': 'Backup de Dados',
+                'outros': 'Outros Serviços'
+            };
+            
+            const html = `
+                <div class="task-detail-container">
+                    <div class="task-detail-header">
+                        <h1 class="task-detail-title">${task.title}</h1>
+                        <div>
+                            <span class="status-badge status-${task.status}">
+                                ${statusText[task.status] || task.status}
+                            </span>
+                            <span class="priority-badge priority-${task.priority}" style="margin-left: 10px;">
+                                ${priorityText[task.priority] || task.priority}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="task-detail-grid">
+                        <div class="detail-card">
+                            <h3>📝 Descrição</h3>
+                            <p>${task.description || 'Sem descrição detalhada.'}</p>
+                        </div>
+                        
+                        <div class="detail-card">
+                            <h3>👤 Informações do Cliente</h3>
+                            <p><strong>Nome:</strong> ${task.client_name}</p>
+                            <p><strong>Telefone:</strong> ${task.client_phone || 'Não informado'}</p>
+                            <p><strong>Email:</strong> ${task.client_email || 'Não informado'}</p>
+                        </div>
+                        
+                        <div class="detail-card">
+                            <h3>🔧 Detalhes Técnicos</h3>
+                            <p><strong>Categoria:</strong> ${categoryText[task.category] || task.category}</p>
+                            <p><strong>Equipamento:</strong> ${task.equipment || 'Não especificado'}</p>
+                            <p><strong>Modelo:</strong> ${task.equipment_model || 'Não especificado'}</p>
+                        </div>
+                        
+                        <div class="detail-card">
+                            <h3>💰 Informações Financeiras</h3>
+                            <p><strong>Orçamento:</strong> R$ ${task.budget ? task.budget.toFixed(2) : '0,00'}</p>
+                            <p><strong>Peças necessárias:</strong> ${task.required_parts || 'Nenhuma'}</p>
+                        </div>
+                        
+                        <div class="detail-card">
+                            <h3>📅 Datas</h3>
+                            <p><strong>Data de criação:</strong> ${new Date(task.created_at).toLocaleDateString('pt-BR')}</p>
+                            <p><strong>Prazo:</strong> ${task.due_date ? new Date(task.due_date).toLocaleDateString('pt-BR') : 'Não definido'}</p>
+                            ${task.completed_at ? `<p><strong>Concluída em:</strong> ${new Date(task.completed_at).toLocaleDateString('pt-BR')}</p>` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="actions-bar">
+                        <a href="/tarefas" class="btn">← Voltar para lista</a>
+                        <a href="/nova-tarefa?edit=${task.id}" class="btn" style="background: #f59e0b;">✏️ Editar Tarefa</a>
+                        <button onclick="deleteTask(${task.id})" class="btn-danger">🗑️ Excluir Tarefa</button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('taskDetail').innerHTML = html;
+        }
+
+        function showNotFound() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('notFound').style.display = 'block';
+        }
+
+        async function deleteTask(id) {
+            if (confirm('Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.')) {
+                try {
+                    const response = await fetch(`/api/tasks/${id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert('Tarefa excluída com sucesso!');
+                        window.location.href = '/tarefas';
+                    } else {
+                        alert('Erro ao excluir tarefa: ' + (data.error || 'Erro desconhecido'));
+                    }
+                } catch (error) {
+                    alert('Erro de conexão com o servidor');
+                }
+            }
+        }
+
+        function logout() {
+            fetch('/api/logout', { method: 'POST' })
+                .then(() => {
+                    localStorage.removeItem('user');
+                    window.location.href = '/login';
+                });
+        }
+
+        // Carregar detalhes da tarefa
+        loadTaskDetail();
+    </script>
+</body>
+</html>

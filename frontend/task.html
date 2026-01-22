@@ -10,7 +10,7 @@
         <h2>🏢 TechSolutions - Tarefas</h2>
         <div>
             <span id="userName"></span>
-            <button onclick="logout()" class="btn-logout">Sair</button>
+            <button type="button" onclick="logout()" class="btn-logout">Sair</button>
         </div>
     </nav>
 
@@ -22,7 +22,7 @@
         </div>
 
         <h2>📋 Todas as Tarefas</h2>
-        
+
         <div class="filters">
             <input type="text" id="search" placeholder="Buscar tarefas..." onkeyup="searchTasks()">
             <select id="statusFilter" onchange="filterTasks()">

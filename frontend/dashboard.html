@@ -4,43 +4,50 @@
     <meta charset="UTF-8">
     <title>Dashboard - TechSolutions</title>
     <link rel="stylesheet" href="css/style.css">
-    <style>
-        .actions-container {
-            margin-top: 20px;
-        }
-        #userName {
-            margin-right: 20px;
-        }
-    </style>
 </head>
 <body>
     <nav class="navbar">
-        <h1>🏢 TechSolutions</h1>
-        <div class="nav-links">
-            <a href="/dashboard" class="nav-link active">Dashboard</a>
-            <a href="/tarefas" class="nav-link">Tarefas</a>
+        <h2>🏢 TechSolutions</h2>
+        <div>
             <span id="userName"></span>
-            <button type="button" onclick="logout()" class="btn btn-danger">Sair</button>
+            <button type="button" onclick="logout()" class="btn-logout">Sair</button>
         </div>
     </nav>
 
     <div class="container">
-        <h1>📊 Dashboard</h1>
-        <p>Visão geral do sistema</p>
-
-        <div class="stats-grid" id="stats">
-            <!-- Carregado por JavaScript -->
+        <div class="menu">
+            <a href="/dashboard" class="btn">Dashboard</a>
+            <a href="/tarefas" class="btn">Tarefas</a>
+            <a href="/nova-tarefa" class="btn btn-success">+ Nova Tarefa</a>
         </div>
 
-        <div class="card">
-            <h2>📋 Tarefas Recentes</h2>
-            <div id="recentTasks">
-                <!-- Carregado por JavaScript -->
+        <h2>📊 Estatísticas</h2>
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div>📋</div>
+                <h3>Total</h3>
+                <div class="stat-number" id="total">0</div>
             </div>
-            <div class="actions-container">
-                <a href="/tarefas" class="btn">Ver todas as tarefas</a>
-                <a href="/tarefas/nova" class="btn btn-success">+ Nova Tarefa</a>
+            <div class="stat-card">
+                <div>⏳</div>
+                <h3>Pendentes</h3>
+                <div class="stat-number" id="pending">0</div>
             </div>
+            <div class="stat-card">
+                <div>🔄</div>
+                <h3>Em Andamento</h3>
+                <div class="stat-number" id="inProgress">0</div>
+            </div>
+            <div class="stat-card">
+                <div>✅</div>
+                <h3>Concluídas</h3>
+                <div class="stat-number" id="completed">0</div>
+            </div>
+        </div>
+
+        <h2>📋 Tarefas Recentes</h2>
+        <div id="recentTasks">
+            Carregando...
         </div>
     </div>
 
@@ -52,8 +59,7 @@
         } else {
             document.getElementById('userName').textContent = user.name;
         }
-        
-        // Carregar dashboard
+
         async function loadDashboard() {
             try {
                 // Carregar estatísticas
@@ -61,134 +67,48 @@
                 const statsData = await statsResponse.json();
                 
                 if (statsData.success) {
-                    updateStats(statsData.stats);
+                    document.getElementById('total').textContent = statsData.stats.total;
+                    document.getElementById('pending').textContent = statsData.stats.pending;
+                    document.getElementById('inProgress').textContent = statsData.stats.in_progress;
+                    document.getElementById('completed').textContent = statsData.stats.completed;
                 }
-                
+
                 // Carregar tarefas recentes
                 const tasksResponse = await fetch('/api/tasks?limit=5');
                 const tasksData = await tasksResponse.json();
                 
-                if (tasksData.success) {
-                    updateRecentTasks(tasksData.tasks);
+                if (tasksData.success && tasksData.tasks.length > 0) {
+                    const html = tasksData.tasks.slice(0, 5).map(task => `
+                        <div class="task-item">
+                            <strong>${task.title}</strong>
+                            <span>${task.client_name}</span>
+                            <span class="status ${task.status}">
+                                ${task.status === 'completed' ? '✅ Concluída' : 
+                                  task.status === 'in_progress' ? '🔄 Em andamento' : '⏳ Pendente'}
+                            </span>
+                            <a href="/tarefa/${task.id}">Ver detalhes</a>
+                        </div>
+                    `).join('');
+                    document.getElementById('recentTasks').innerHTML = html;
+                } else {
+                    document.getElementById('recentTasks').innerHTML = '<p>Nenhuma tarefa encontrada.</p>';
                 }
             } catch (error) {
                 console.error('Erro:', error);
+                document.getElementById('recentTasks').innerHTML = '<p>Erro ao carregar tarefas.</p>';
             }
         }
-        
-        function updateStats(stats) {
-            const statsGrid = document.getElementById('stats');
-            
-            const statCards = [
-                { title: 'Total de Tarefas', value: stats.total || 0, icon: '📋' },
-                { title: 'Pendentes', value: stats.pending || 0, icon: '⏳' },
-                { title: 'Em Andamento', value: stats.in_progress || 0, icon: '🔄' },
-                { title: 'Concluídas', value: stats.completed || 0, icon: '✅' }
-            ];
-            
-            statsGrid.innerHTML = statCards.map(stat => `
-                <div class="stat-card">
-                    <div style="font-size: 2rem;">${stat.icon}</div>
-                    <h3>${stat.title}</h3>
-                    <div class="stat-number">${stat.value}</div>
-                </div>
-            `).join('');
-        }
-        
-        function updateRecentTasks(tasks) {
-            const container = document.getElementById('recentTasks');
-            
-            if (!tasks || tasks.length === 0) {
-                container.innerHTML = '<p>Nenhuma tarefa encontrada.</p>';
-                return;
-            }
-            
-            let html = '<table class="table">';
-            html += `
-                <thead>
-                    <tr>
-                        <th>Título</th>
-                        <th>Cliente</th>
-                        <th>Categoria</th>
-                        <th>Status</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-            `;
-            
-            tasks.slice(0, 5).forEach(task => {
-                html += `
-                    <tr>
-                        <td>${task.title}</td>
-                        <td>${task.client_name}</td>
-                        <td>${getCategoryName(task.category)}</td>
-                        <td><span class="badge badge-${task.status}">${getStatusName(task.status)}</span></td>
-                        <td>
-                            <a href="/tarefas/${task.id}" class="btn">Ver</a>
-                            <button onclick="deleteTask(${task.id})" class="btn btn-danger">Excluir</button>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            html += '</tbody></table>';
-            container.innerHTML = html;
-        }
-        
-        function getCategoryName(category) {
-            const categories = {
-                'venda': 'Venda',
-                'reparo_pc': 'Reparo PC',
-                'reparo_celular': 'Reparo Celular',
-                'reparo_impressora': 'Reparo Impressora',
-                'instalacao_software': 'Instalação',
-                'rede': 'Rede',
-                'backup': 'Backup',
-                'outros': 'Outros'
-            };
-            return categories[category] || category;
-        }
-        
-        function getStatusName(status) {
-            const statuses = {
-                'pending': 'Pendente',
-                'in_progress': 'Em Andamento',
-                'completed': 'Concluído'
-            };
-            return statuses[status] || status;
-        }
-        
-        async function deleteTask(id) {
-            if (!confirm('Tem certeza que deseja excluir esta tarefa?')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/api/tasks/${id}`, {
-                    method: 'DELETE'
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert('✅ Tarefa excluída com sucesso!');
-                    loadDashboard();
-                } else {
-                    alert('❌ Erro: ' + (data.error || 'Erro ao excluir tarefa'));
-                }
-            } catch (error) {
-                alert('❌ Erro de conexão');
-            }
-        }
-        
+
         function logout() {
-            localStorage.removeItem('user');
-            window.location.href = '/login';
+            fetch('/api/logout', { method: 'POST' })
+                .then(() => {
+                    localStorage.removeItem('user');
+                    window.location.href = '/login';
+                });
         }
-        
-        // Inicializar
-        document.addEventListener('DOMContentLoaded', loadDashboard);
+
+        // Carregar dashboard ao iniciar
+        loadDashboard();
     </script>
 </body>
 </html>

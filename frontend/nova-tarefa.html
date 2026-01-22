@@ -1,103 +1,144 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Nova Tarefa - TechSolutions</title>
-<link rel="stylesheet" href="css/style.css">
+    <meta charset="UTF-8">
+    <title>Nova Tarefa - TechSolutions</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <nav class="navbar">
+        <h2>🏢 TechSolutions - Nova Tarefa</h2>
+        <div>
+            <span id="userName"></span>
+            <button onclick="logout()" class="btn-logout">Sair</button>
+        </div>
+    </nav>
 
-<nav class="navbar">
-    <h1>🏢 TechSolutions</h1>
-    <div class="nav-links">
-        <a href="/dashboard" class="nav-link">Dashboard</a>
-        <a href="/tarefas" class="nav-link">Tarefas</a>
-        <span id="userName"></span>
-        <button type="button" onclick="logout()" class="btn btn-danger">Sair</button>
-    </div>
-</nav>
+    <div class="container">
+        <div class="menu">
+            <a href="/dashboard" class="btn">Dashboard</a>
+            <a href="/tarefas" class="btn">Tarefas</a>
+            <a href="/nova-tarefa" class="btn btn-success">+ Nova Tarefa</a>
+        </div>
 
-<div class="container">
-    <a href="/tarefas" class="btn">← Voltar</a>
-
-    <div class="card">
-        <h1 id="formTitle">📝 Nova Tarefa</h1>
-        <div id="message"></div>
-
-        <form id="taskForm"><button type="submit">Submit</button>
-            <input id="title" type="text" required class="form-control" placeholder="Título">
-            <select id="category" required class="form-control">
-                <option value="">Categoria</option>
-                <option value="venda">Venda</option>
-                <option value="reparo_pc">Reparo PC</option>
-                <option value="reparo_celular">Reparo Celular</option>
-                <option value="reparo_impressora">Reparo Impressora</option>
-                <option value="instalacao_software">Instalação</option>
-                <option value="rede">Rede</option>
-                <option value="backup">Backup</option>
-                <option value="outros">Outros</option>
-            </select>
-
-            <input id="client_name" type="text" required class="form-control" placeholder="Cliente">
-            <input id="due_date" type="date" required class="form-control">
-            <textarea id="description" required class="form-control" placeholder="Descrição"></textarea>
-
-            <button type="button" class="btn btn-success">Salvar</button>
+        <h2>➕ Nova Tarefa</h2>
+        
+        <form id="taskForm" onsubmit="saveTask(event)">
+            <div class="form-group">
+                <label>Título *</label>
+                <input type="text" id="title" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Descrição</label>
+                <textarea id="description" rows="3"></textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Categoria *</label>
+                    <select id="category" required>
+                        <option value="">Selecione...</option>
+                        <option value="venda">Venda de Equipamentos</option>
+                        <option value="reparo_pc">Reparação de PC</option>
+                        <option value="reparo_celular">Reparação de Celular</option>
+                        <option value="reparo_impressora">Reparação de Impressora</option>
+                        <option value="instalacao_software">Instalação de Software</option>
+                        <option value="rede">Configuração de Rede</option>
+                        <option value="backup">Backup de Dados</option>
+                        <option value="outros">Outros Serviços</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Prioridade</label>
+                    <select id="priority">
+                        <option value="low">Baixa</option>
+                        <option value="medium" selected>Média</option>
+                        <option value="high">Alta</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Nome do Cliente *</label>
+                <input type="text" id="client_name" required>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Telefone</label>
+                    <input type="text" id="client_phone">
+                </div>
+                
+                <div class="form-group">
+                    <label>Prazo</label>
+                    <input type="date" id="due_date">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Orçamento (R$)</label>
+                <input type="number" id="budget" step="0.01">
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success">Salvar Tarefa</button>
+                <a href="/tarefas" class="btn">Cancelar</a>
+            </div>
         </form>
     </div>
-</div>
 
-<script>
-const user = JSON.parse(localStorage.getItem('user'));
-if (!user) location.href = '/login';
-else userName.textContent = user.name;
+    <script>
+        // Verificar login
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) {
+            window.location.href = '/login';
+        } else {
+            document.getElementById('userName').textContent = user.name;
+        }
 
-const editId = new URLSearchParams(location.search).get('edit');
-
-if (editId) {
-    formTitle.textContent = '✏️ Editar Tarefa';
-    loadTask(editId);
-}
-
-async function loadTask(id) {
-    const res = await fetch(`/api/tasks/${id}`);
-    const data = await res.json();
-    if (data.success) {
-        Object.keys(data.task).forEach(k => {
-            if (document.getElementById(k)) {
-                document.getElementById(k).value = data.task[k];
+        async function saveTask(event) {
+            event.preventDefault();
+            
+            const task = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                category: document.getElementById('category').value,
+                priority: document.getElementById('priority').value,
+                client_name: document.getElementById('client_name').value,
+                client_phone: document.getElementById('client_phone').value,
+                due_date: document.getElementById('due_date').value,
+                budget: document.getElementById('budget').value || 0
+            };
+            
+            try {
+                const response = await fetch('/api/tasks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(task)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Tarefa criada com sucesso!');
+                    window.location.href = '/tarefas';
+                } else {
+                    alert('Erro ao criar tarefa: ' + (data.error || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                alert('Erro de conexão com o servidor');
             }
-        });
-    }
-}
+        }
 
-taskForm.addEventListener('submit', async e => {
-    e.preventDefault();
-
-    const body = {
-        title: title.value,
-        category: category.value,
-        client_name: client_name.value,
-        due_date: due_date.value,
-        description: description.value
-    };
-
-    const res = await fetch(editId ? `/api/tasks/${editId}` : '/api/tasks', {
-        method: editId ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
-
-    const data = await res.json();
-    if (data.success) location.href = '/tarefas';
-    else alert('Erro ao salvar');
-});
-
-function logout() {
-    localStorage.removeItem('user');
-    location.href = '/login';
-}
-</script>
-
+        function logout() {
+            fetch('/api/logout', { method: 'POST' })
+                .then(() => {
+                    localStorage.removeItem('user');
+                    window.location.href = '/login';
+                });
+        }
+    </script>
 </body>
 </html>

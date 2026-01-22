@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <title>Teste Login</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        input, button { padding: 10px; margin: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h2>🔐 Teste de Login</h2>
+
+    <div>
+        <input type="email" id="email" placeholder="Email" value="admin@empresa.com">
+        <input type="password" id="password" placeholder="Senha" value="Admin@123">
+        <button type="button" onclick="testLogin()">Testar Login</button>
+    </div>
+
+    <div id="result"></div>
+
+    <script>
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerHTML = 'Testando...';
+            
+            try {
+                // Testar endpoint principal
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `<div class="success">✅ Login bem-sucedido!<br>Usuário: ${data.user.name}<br>ID: ${data.user.id}</div>`;
+                } else {
+                    // Tentar endpoint simples
+                    const simpleResponse = await fetch('/api/login-simple', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
+                    
+                    const simpleData = await simpleResponse.json();
+                    
+                    if (simpleData.success) {
+                        resultDiv.innerHTML = `<div class="success">✅ Login simples bem-sucedido!<br>Usuário: ${simpleData.user.name}</div>`;
+                    } else {
+                        resultDiv.innerHTML = `<div class="error">❌ Erro: ${simpleData.error || 'Falha no login'}</div>`;
+                    }
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Erro de conexão: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
