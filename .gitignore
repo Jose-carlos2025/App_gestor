@@ -15,6 +15,7 @@ yarn-error.log*
 *.db
 *.sqlite
 *.sqlite3
+database.db
 
 # Sistema operacional
 .DS_Store
@@ -33,3 +34,9 @@ logs/
 # Build
 dist/
 build/
+
+# Arquivos temporários
+backend/vercel-build.js
+backend/test-login.js
+frontend/test-login.html
+frontend/task.html
