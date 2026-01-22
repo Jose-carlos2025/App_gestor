@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "vercel-build": "node vercel-build.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -13,7 +14,7 @@
     "express-session": "^1.18.0",
     "sqlite3": "^5.1.6"
   },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
+  "engines": {
+    "node": ">=18.x"
   }
 }

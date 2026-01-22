@@ -4,7 +4,12 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+// Configuração para Vercel
+const isVercel = process.env.VERCEL === '1';
+const frontendPath = isVercel 
+    ? path.join(__dirname, '../frontend')
+    : path.join(__dirname, '../frontend');
 
 // Middleware
 app.use(express.json());
@@ -17,8 +22,7 @@ app.use(session({
 }));
 
 // Servir arquivos estáticos
-app.use(express.static(path.join(__dirname, '../frontend')));
-
+app.use(express.static(frontendPath));
 // Conectar ao banco
 const db = new sqlite3.Database('./database.db', (err) => {
     if (err) {
