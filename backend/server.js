@@ -4,40 +4,115 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const app = express();
-const PORT = process.env.PORT || 3000;
+
 // Configuração para Vercel
 const isVercel = process.env.VERCEL === '1';
-const frontendPath = isVercel 
-    ? path.join(__dirname, '../frontend')
-    : path.join(__dirname, '../frontend');
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
-    secret: 'techsolutions-secret-key-2024',
+    secret: process.env.SESSION_SECRET || 'techsolutions-secret-key-2024-vercel',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
+    cookie: { 
+        secure: isVercel, // true no Vercel (HTTPS), false localmente
+        maxAge: 24 * 60 * 60 * 1000 
+    }
 }));
 
-// Servir arquivos estáticos
+// Servir arquivos estáticos - caminho correto para Vercel
+const frontendPath = path.join(__dirname, '../frontend');
 app.use(express.static(frontendPath));
-// Conectar ao banco
-const db = new sqlite3.Database('./database.db', (err) => {
+
+// Conectar ao banco de dados - configuração especial para Vercel
+const dbPath = isVercel ? path.join('/tmp', 'database.db') : './database.db';
+console.log(`📁 Usando banco de dados em: ${dbPath}`);
+
+const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
     if (err) {
-        console.error('❌ Erro ao conectar ao banco:', err);
-        return;
+        console.error('❌ Erro ao conectar ao banco:', err.message);
+    } else {
+        console.log('✅ Conectado ao banco de dados SQLite');
+        if (!isVercel) {
+            initializeDatabase();
+        } else {
+            // No Vercel, só criar tabelas se não existirem
+            createTables();
+        }
     }
-    
-    console.log('✅ Banco conectado');
-    initDB();
 });
 
-function initDB() {
-    // Executar queries em série para garantir ordem
+function createTables() {
+    // Criar tabelas apenas se não existirem
     db.serialize(() => {
-        // 1. Criar tabela users
+        // Tabela users
+        db.run(`CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT DEFAULT 'technician',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (err) => {
+            if (err) console.error('❌ Erro ao criar tabela users:', err);
+            else console.log('✅ Tabela users verificada');
+        });
+        
+        // Tabela tasks
+        db.run(`CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT,
+            category TEXT,
+            priority TEXT DEFAULT 'medium',
+            status TEXT DEFAULT 'pending',
+            client_name TEXT,
+            client_phone TEXT,
+            budget REAL,
+            due_date TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (err) => {
+            if (err) console.error('❌ Erro ao criar tabela tasks:', err);
+            else console.log('✅ Tabela tasks verificada');
+        });
+        
+        // Criar usuário admin se não existir
+        setTimeout(() => {
+            const adminEmail = 'admin@empresa.com';
+            db.get('SELECT id FROM users WHERE email = ?', [adminEmail], (err, row) => {
+                if (err) {
+                    console.error('❌ Erro ao verificar admin:', err);
+                    return;
+                }
+                
+                if (!row) {
+                    bcrypt.hash('Admin@123', 10, (err, hash) => {
+                        if (err) {
+                            console.error('❌ Erro ao criar hash:', err);
+                            return;
+                        }
+                        
+                        db.run(
+                            'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+                            ['Administrador', adminEmail, hash, 'admin'],
+                            (err) => {
+                                if (err) console.error('❌ Erro ao criar admin:', err);
+                                else console.log('👑 Admin criado no Vercel');
+                            }
+                        );
+                    });
+                } else {
+                    console.log('✅ Admin já existe');
+                }
+            });
+        }, 1000);
+    });
+}
+
+function initializeDatabase() {
+    db.serialize(() => {
+        // Tabela users
         db.run(`CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -50,7 +125,7 @@ function initDB() {
             else console.log('✅ Tabela users criada');
         });
         
-        // 2. Criar tabela tasks
+        // Tabela tasks
         db.run(`CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
@@ -68,7 +143,7 @@ function initDB() {
             else console.log('✅ Tabela tasks criada');
         });
         
-        // 3. Verificar e criar admin
+        // Criar usuário admin se não existir
         db.get('SELECT id FROM users WHERE email = ?', ['admin@empresa.com'], (err, row) => {
             if (err) {
                 console.error('❌ Erro ao verificar admin:', err);
@@ -96,14 +171,13 @@ function initDB() {
             }
         });
         
-        // 4. Adicionar tarefas de exemplo
+        // Adicionar tarefas de exemplo se a tabela estiver vazia
         db.get('SELECT COUNT(*) as count FROM tasks', (err, row) => {
             if (err) {
                 console.error('❌ Erro ao contar tarefas:', err);
                 return;
             }
             
-            // Verificar se row é válido
             if (!row || row.count === 0) {
                 const tasks = [
                     ['Reparo Notebook Dell', 'Tela quebrada e ventoinha barulhenta', 'reparo_pc', 'high', 'João Silva', 450, '2024-12-20'],
@@ -114,10 +188,7 @@ function initDB() {
                 tasks.forEach(task => {
                     db.run(
                         'INSERT INTO tasks (title, description, category, priority, client_name, budget, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                        task,
-                        (err) => {
-                            if (err) console.error('❌ Erro ao inserir tarefa:', err);
-                        }
+                        task
                     );
                 });
                 console.log('📝 Tarefas exemplo adicionadas');
@@ -136,7 +207,6 @@ app.post('/api/login', (req, res) => {
     
     console.log('🔐 Tentando login para:', email);
     
-    // Validação básica
     if (!email || !password) {
         return res.status(400).json({ 
             success: false, 
@@ -144,7 +214,6 @@ app.post('/api/login', (req, res) => {
         });
     }
     
-    // Buscar usuário
     db.get('SELECT * FROM users WHERE email = ?', [email], (err, user) => {
         if (err) {
             console.error('❌ Erro no banco:', err);
@@ -162,7 +231,6 @@ app.post('/api/login', (req, res) => {
             });
         }
         
-        // Comparar senhas
         bcrypt.compare(password, user.password, (err, match) => {
             if (err) {
                 console.error('❌ Erro ao comparar senhas:', err);
@@ -180,7 +248,6 @@ app.post('/api/login', (req, res) => {
                 });
             }
             
-            // Login bem-sucedido
             req.session.userId = user.id;
             req.session.userName = user.name;
             req.session.userRole = user.role;
@@ -198,35 +265,6 @@ app.post('/api/login', (req, res) => {
             });
         });
     });
-});
-
-// LOGIN SIMPLES (fallback)
-app.post('/api/login-simple', (req, res) => {
-    const { email, password } = req.body;
-    
-    console.log('🔐 [SIMPLE] Tentando login:', email);
-    
-    if (email === 'admin@empresa.com' && password === 'Admin@123') {
-        // Criar sessão
-        req.session.userId = 1;
-        req.session.userName = 'Administrador';
-        req.session.userRole = 'admin';
-        
-        res.json({
-            success: true,
-            user: {
-                id: 1,
-                name: 'Administrador',
-                email: 'admin@empresa.com',
-                role: 'admin'
-            }
-        });
-    } else {
-        res.status(401).json({
-            success: false,
-            error: 'Credenciais inválidas'
-        });
-    }
 });
 
 // LOGOUT
@@ -321,10 +359,8 @@ app.get('/api/tasks/:id', (req, res) => {
 // CRIAR TAREFA
 app.post('/api/tasks', (req, res) => {
     console.log('📝 Recebendo nova tarefa...');
-    console.log('📦 Dados recebidos:', req.body);
     
     if (!req.session.userId) {
-        console.log('❌ Usuário não autenticado');
         return res.status(401).json({ 
             success: false, 
             error: 'Não autenticado' 
@@ -333,62 +369,40 @@ app.post('/api/tasks', (req, res) => {
     
     const task = req.body;
     
-    // Validação dos campos obrigatórios
     if (!task.title || !task.category || !task.client_name) {
-        console.log('❌ Campos obrigatórios faltando');
         return res.status(400).json({ 
             success: false, 
             error: 'Título, categoria e nome do cliente são obrigatórios' 
         });
     }
     
-    // Valores padrão
-    const newTask = {
-        title: task.title,
-        description: task.description || '',
-        category: task.category,
-        priority: task.priority || 'medium',
-        status: 'pending',
-        client_name: task.client_name,
-        client_phone: task.client_phone || '',
-        budget: parseFloat(task.budget) || 0,
-        due_date: task.due_date || null
-    };
-    
-    console.log('📦 Tarefa processada:', newTask);
-    
-    // Inserir no banco
     const sql = `
-        INSERT INTO tasks (title, description, category, priority, status, client_name, client_phone, budget, due_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO tasks (title, description, category, priority, client_name, client_phone, budget, due_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     const params = [
-        newTask.title,
-        newTask.description,
-        newTask.category,
-        newTask.priority,
-        newTask.status,
-        newTask.client_name,
-        newTask.client_phone,
-        newTask.budget,
-        newTask.due_date
+        task.title,
+        task.description || '',
+        task.category,
+        task.priority || 'medium',
+        task.client_name,
+        task.client_phone || '',
+        parseFloat(task.budget) || 0,
+        task.due_date || null
     ];
     
     db.run(sql, params, function(err) {
         if (err) {
             console.error('❌ ERRO SQL:', err.message);
-            console.error('❌ Query:', sql);
-            console.error('❌ Parâmetros:', params);
             return res.status(500).json({ 
                 success: false, 
-                error: 'Erro no banco de dados: ' + err.message 
+                error: 'Erro no banco de dados' 
             });
         }
         
         console.log('✅ Tarefa inserida com ID:', this.lastID);
         
-        // Buscar a tarefa recém-criada
         db.get('SELECT * FROM tasks WHERE id = ?', [this.lastID], (err, savedTask) => {
             if (err) {
                 return res.status(500).json({ 
@@ -401,74 +415,6 @@ app.post('/api/tasks', (req, res) => {
                 success: true,
                 message: 'Tarefa criada com sucesso!',
                 task: savedTask
-            });
-        });
-    });
-});
-
-// ATUALIZAR TAREFA
-app.put('/api/tasks/:id', (req, res) => {
-    if (!req.session.userId) {
-        return res.status(401).json({ 
-            success: false, 
-            error: 'Não autenticado' 
-        });
-    }
-    
-    const taskId = req.params.id;
-    const taskData = req.body;
-    
-    // Validar se há dados para atualizar
-    if (Object.keys(taskData).length === 0) {
-        return res.status(400).json({ 
-            success: false, 
-            error: 'Nenhum dado para atualizar' 
-        });
-    }
-    
-    // Construir query dinamicamente
-    const fields = [];
-    const values = [];
-    
-    for (const [key, value] of Object.entries(taskData)) {
-        if (value !== undefined && value !== null) {
-            fields.push(`${key} = ?`);
-            values.push(value);
-        }
-    }
-    
-    values.push(taskId);
-    
-    const query = `UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`;
-    
-    db.run(query, values, function(err) {
-        if (err) {
-            console.error('❌ Erro ao atualizar tarefa:', err);
-            return res.status(500).json({ 
-                success: false, 
-                error: 'Erro interno do servidor' 
-            });
-        }
-        
-        if (this.changes === 0) {
-            return res.status(404).json({ 
-                success: false, 
-                error: 'Tarefa não encontrada' 
-            });
-        }
-        
-        // Retornar a tarefa atualizada
-        db.get('SELECT * FROM tasks WHERE id = ?', [taskId], (err, task) => {
-            if (err) {
-                return res.status(500).json({ 
-                    success: false, 
-                    error: 'Erro interno do servidor' 
-                });
-            }
-            
-            res.json({
-                success: true,
-                task: task
             });
         });
     });
@@ -525,77 +471,68 @@ app.get('/api/categories', (req, res) => {
     });
 });
 
-// TESTE DE BANCO
-app.get('/api/test-db', (req, res) => {
-    db.get('SELECT COUNT(*) as user_count FROM users', (err, userRow) => {
-        if (err) {
-            return res.json({ 
-                success: false, 
-                error: 'Erro no banco: ' + err.message 
-            });
-        }
-        
-        db.get('SELECT COUNT(*) as task_count FROM tasks', (err, taskRow) => {
-            if (err) {
-                return res.json({ 
-                    success: false, 
-                    error: 'Erro no banco: ' + err.message 
-                });
-            }
-            
-            res.json({
-                success: true,
-                message: 'Banco de dados funcionando!',
-                stats: {
-                    users: userRow.user_count,
-                    tasks: taskRow.task_count
-                }
-            });
-        });
-    });
-});
-
 // ========== ROTAS DE PÁGINAS ==========
 
 app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/login.html'));
+    res.sendFile(path.join(frontendPath, 'login.html'));
 });
 
 app.get('/dashboard', (req, res) => {
     if (!req.session.userId) return res.redirect('/login');
-    res.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
+    res.sendFile(path.join(frontendPath, 'dashboard.html'));
 });
 
 app.get('/tarefas', (req, res) => {
     if (!req.session.userId) return res.redirect('/login');
-    res.sendFile(path.join(__dirname, '../frontend/tarefas.html'));
+    res.sendFile(path.join(frontendPath, 'tarefas.html'));
 });
 
 app.get('/nova-tarefa', (req, res) => {
     if (!req.session.userId) return res.redirect('/login');
-    res.sendFile(path.join(__dirname, '../frontend/nova-tarefa.html'));
+    res.sendFile(path.join(frontendPath, 'nova-tarefa.html'));
 });
 
 app.get('/tarefa/:id', (req, res) => {
     if (!req.session.userId) return res.redirect('/login');
-    res.sendFile(path.join(__dirname, '../frontend/detalhe-tarefa.html'));
+    res.sendFile(path.join(frontendPath, 'detalhe-tarefa.html'));
 });
 
 app.get('/', (req, res) => {
     res.redirect('/login');
 });
 
-// INICIAR SERVIDOR
+// Rota de teste para verificar se o servidor está funcionando
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'OK',
+        message: 'Servidor funcionando normalmente',
+        timestamp: new Date().toISOString(),
+        environment: isVercel ? 'Vercel' : 'Local'
+    });
+});
+
+// Tratamento de erros global
+app.use((err, req, res, next) => {
+    console.error('❌ Erro global:', err);
+    res.status(500).json({
+        success: false,
+        error: 'Erro interno do servidor'
+    });
+});
+
+// Iniciar servidor
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log('==================================');
-    console.log('🚀 SISTEMA DEFINITIVO INICIADO!');
+    console.log('🚀 SERVIDOR VERCEL PRONTO!');
     console.log('==================================');
-    console.log(`🌐 URL: http://localhost:${PORT}`);
-    console.log('👤 Email: admin@empresa.com');
+    console.log(`🌐 Porta: ${PORT}`);
+    console.log(`📍 Ambiente: ${isVercel ? 'Vercel (Produção)' : 'Local'}`);
+    console.log(`📁 Banco de dados: ${dbPath}`);
+    console.log('👤 Login: admin@empresa.com');
     console.log('🔑 Senha: Admin@123');
     console.log('==================================');
-    console.log('✅ Banco: SQLite');
-    console.log('✅ Sessões ativas');
-    console.log('✅ API completa');
-    console.log('==================================');
 });
+
+// Exportar para Vercel
+module.exports = app;

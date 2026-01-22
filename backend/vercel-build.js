@@ -1,14 +1,14 @@
-// Arquivo de build para o Vercel
-const fs = require('fs');
-const path = require('path');
+// backend/vercel-build.js
+console.log('🚀 Configurando build para Vercel...');
 
-console.log('🚀 Preparando build para Vercel...');
+// Forçar instalação de dependências nativas
+const { execSync } = require('child_process');
 
-// Verificar se a pasta frontend existe
-const frontendPath = path.join(__dirname, '../frontend');
-if (!fs.existsSync(frontendPath)) {
-    console.error('❌ Pasta frontend não encontrada!');
+try {
+    console.log('📦 Instalando dependências...');
+    execSync('npm install', { stdio: 'inherit' });
+    console.log('✅ Build concluído com sucesso!');
+} catch (error) {
+    console.error('❌ Erro no build:', error);
     process.exit(1);
 }
-
-console.log('✅ Build configurado com sucesso!');

@@ -1,5 +1,10 @@
 {
+  "version": 2,
   "builds": [
+    {
+      "src": "backend/vercel-build.js",
+      "use": "@vercel/node"
+    },
     {
       "src": "backend/server.js",
       "use": "@vercel/node"
@@ -15,7 +20,10 @@
       "dest": "backend/server.js"
     }
   ],
-  "env": {
-    "NODE_ENV": "production"
+  "functions": {
+    "backend/server.js": {
+      "maxDuration": 30,
+      "memory": 3008
+    }
   }
 }
